@@ -1,0 +1,30 @@
+# Builds the server image and pushes a unique tag to GHCR with GITHUB_TOKEN.
+# Packages pushed this way are connected to the repository, so a GitHub
+# "Packages" webhook pointed at Gameye's payload URL registers each new tag
+# automatically (Gameye docs: GHCR setup, Option A).
+name: gameye-ghcr-push
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  workflow_dispatch:
+permissions:
+  contents: read
+  packages: write
+jobs:
+  push:
+    runs-on: ubuntu-latest
+    env:
+      IMAGE: ghcr.io/${{ github.repository_owner }}/tin-tanks
+    steps:
+      - uses: actions/checkout@v4
+      - name: Login to GHCR
+        run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+      - name: Build and push (linux/amd64, unique tag per build)
+        run: |
+          IMAGE=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
+          TAG=sha-${GITHUB_SHA::12}
+          docker build --platform linux/amd64 -t "$IMAGE:$TAG" -t "$IMAGE:latest" .
+          docker push "$IMAGE:$TAG"
+          docker push "$IMAGE:latest"
+          echo "pushed $IMAGE:$TAG" >> "$GITHUB_STEP_SUMMARY"

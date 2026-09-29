@@ -1,0 +1,28 @@
+{
+  "name": "tin-tanks",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "Four-player top-down cartoon WW2 tank battle. three.js client, authoritative Node game server packaged for Gameye.",
+  "workspaces": [
+    "shared",
+    "server",
+    "client"
+  ],
+  "scripts": {
+    "dev:server": "npm --workspace server run dev",
+    "dev:client": "npm --workspace client run dev",
+    "build": "npm --workspace client run build",
+    "start": "npm --workspace server start",
+    "test": "npm --workspace server test",
+    "bot": "node tools/bot.js",
+    "docker:build": "docker build -t tin-tanks-claude:local .",
+    "docker:run": "docker run --rm -p 8080:8080 tin-tanks-claude:local"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "allowScripts": {
+    "esbuild@0.25.12": true
+  }
+}

@@ -1,0 +1,93 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tin Tanks</title>
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect x='10' y='40' width='80' height='35' rx='8' fill='%236b7c3a' stroke='%23222' stroke-width='6'/><rect x='30' y='25' width='40' height='25' rx='6' fill='%2355642c' stroke='%23222' stroke-width='6'/><rect x='68' y='33' width='30' height='8' fill='%23333'/></svg>" />
+  <style>
+    :root {
+      --ink: #1d1a14;
+      --paper: #f4e9cf;
+      --olive: #6b7c3a;
+      --brick: #9b3b2e;
+      --sand: #c9a86a;
+      --font-display: 'Bangers', Impact, 'Arial Narrow Bold', 'Arial Black', sans-serif;
+      --font-body: 'Trebuchet MS', 'Segoe UI', Helvetica, Arial, sans-serif;
+    }
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; overflow: hidden; background: #3e5a2b; font-family: var(--font-body); color: var(--paper); }
+    canvas { display: block; }
+    #app { position: fixed; inset: 0; }
+
+    /* ---- HUD ---- */
+    .hud { position: fixed; pointer-events: none; user-select: none; text-shadow: 0 2px 0 rgba(0,0,0,.55); }
+    #scoreboard { top: 14px; left: 14px; background: rgba(29,26,20,.72); border: 3px solid var(--ink); border-radius: 10px; padding: 8px 12px; min-width: 220px; }
+    #scoreboard h2 { margin: 0 0 6px; font: 22px var(--font-display); letter-spacing: 1px; color: var(--sand); }
+    #scoreboard table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    #scoreboard td { padding: 2px 4px; white-space: nowrap; }
+    #scoreboard td.num { text-align: right; width: 34px; font-variant-numeric: tabular-nums; }
+    #scoreboard tr.me td { color: #fff3c4; font-weight: bold; }
+    .swatch { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--ink); border-radius: 3px; vertical-align: -2px; margin-right: 6px; }
+
+    #status { top: 14px; right: 14px; text-align: right; font-size: 13px; opacity: .9; }
+    #killfeed { top: 44px; right: 14px; text-align: right; font-size: 14px; }
+    #killfeed div { margin-top: 3px; opacity: 0; animation: feed 6s forwards; }
+    @keyframes feed { 0% { opacity: 0; transform: translateX(20px);} 8% { opacity: 1; transform: none;} 80% { opacity: 1;} 100% { opacity: 0;} }
+
+    #hp { bottom: 22px; left: 50%; transform: translateX(-50%); width: 280px; }
+    #hp .label { font: 18px var(--font-display); letter-spacing: 1px; margin-bottom: 4px; text-align: center; }
+    #hp .track { height: 18px; background: rgba(29,26,20,.75); border: 3px solid var(--ink); border-radius: 9px; overflow: hidden; }
+    #hp .fill { height: 100%; width: 100%; background: linear-gradient(#b6e26b, #6fae2b); transition: width .15s, background .3s; }
+    #hp .fill.low { background: linear-gradient(#ff9d6b, #d8402b); }
+
+    #message { top: 26%; left: 0; right: 0; text-align: center; font: 44px var(--font-display); letter-spacing: 2px; color: #fff3c4; text-shadow: 3px 3px 0 var(--ink), -2px -2px 0 var(--ink), 2px -2px 0 var(--ink), -2px 2px 0 var(--ink); opacity: 0; transition: opacity .25s; }
+    #message.show { opacity: 1; }
+    #message small { display: block; font: 20px var(--font-body); letter-spacing: 0; margin-top: 8px; text-shadow: 0 2px 0 var(--ink); }
+
+    #hint { bottom: 18px; left: 14px; font-size: 13px; opacity: .8; line-height: 1.5; }
+    kbd { display: inline-block; min-width: 20px; padding: 0 5px; border: 2px solid var(--ink); border-radius: 4px; background: rgba(244,233,207,.9); color: var(--ink); font: bold 12px var(--font-body); text-align: center; text-shadow: none; }
+
+    /* ---- Overlay ---- */
+    #overlay { position: fixed; inset: 0; display: flex; align-items: center; justify-content: center; background: radial-gradient(ellipse at center, rgba(62,90,43,.55), rgba(20,26,14,.85)); z-index: 10; }
+    #overlay.hidden { display: none; }
+    .card { background: var(--paper); color: var(--ink); border: 4px solid var(--ink); border-radius: 14px; padding: 28px 34px 26px; width: min(420px, 92vw); box-shadow: 8px 8px 0 rgba(0,0,0,.35); text-align: center; }
+    .card h1 { margin: 0; font: 64px var(--font-display); letter-spacing: 3px; line-height: .95; color: var(--brick); text-shadow: 3px 3px 0 var(--ink); }
+    .card p.tag { margin: 6px 0 20px; font-size: 15px; color: #5a5040; }
+    .card label { display: block; text-align: left; font-size: 13px; font-weight: bold; margin-bottom: 4px; }
+    .card input { width: 100%; font: 18px var(--font-body); padding: 10px 12px; border: 3px solid var(--ink); border-radius: 8px; background: #fff; }
+    .card button { margin-top: 14px; width: 100%; font: 28px var(--font-display); letter-spacing: 2px; padding: 10px; border: 3px solid var(--ink); border-radius: 8px; background: var(--olive); color: #fff; cursor: pointer; box-shadow: 4px 4px 0 var(--ink); }
+    .card button:active { transform: translate(2px, 2px); box-shadow: 2px 2px 0 var(--ink); }
+    .card button:disabled { opacity: .6; cursor: default; }
+    #overlay-status { min-height: 20px; margin-top: 12px; font-size: 14px; color: var(--brick); font-weight: bold; }
+    .card .controls { margin-top: 18px; font-size: 13px; color: #5a5040; line-height: 1.7; }
+    .card .controls kbd { background: #fff; }
+    #overlay .server { margin-top: 10px; font-size: 11px; color: #8a7f6a; word-break: break-all; }
+  </style>
+</head>
+<body>
+  <div id="app"></div>
+
+  <div id="scoreboard" class="hud"><h2>SCORES</h2><table><tbody id="scores"></tbody></table></div>
+  <div id="status" class="hud"></div>
+  <div id="killfeed" class="hud"></div>
+  <div id="hp" class="hud"><div class="label">ARMOUR</div><div class="track"><div class="fill" id="hpfill"></div></div></div>
+  <div id="message" class="hud"></div>
+  <div id="hint" class="hud"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> move &nbsp; <kbd>SPACE</kbd> fire &nbsp; <kbd>M</kbd> mute</div>
+
+  <div id="overlay">
+    <div class="card">
+      <h1>TIN TANKS</h1>
+      <p class="tag">A cartoon WW2 tank scrap for four. Shoot, dash, hide.</p>
+      <label for="name">Call sign</label>
+      <input id="name" maxlength="16" placeholder="e.g. Sarge" autocomplete="off" />
+      <button id="deploy">DEPLOY</button>
+      <div id="overlay-status"></div>
+      <div class="controls"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> to move &nbsp;·&nbsp; <kbd>SPACE</kbd> to fire<br/>Three hits and you're scrap. Buildings and sandbags stop shells.</div>
+      <div class="server" id="server-label"></div>
+    </div>
+  </div>
+
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>
