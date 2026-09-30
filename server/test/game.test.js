@@ -141,3 +141,30 @@ test('idle timer counts only while the room is empty', () => {
   run(g, 3);
   assert.ok(g.idleSeconds() >= 2.99 && g.idleSeconds() < 3.1, `got ${g.idleSeconds()}`);
 });
+
+test('a tank shoved into a tree is pushed back out and can drive again', () => {
+  const g = new Game();
+  const p = g.addPlayer('stuck');
+  // Tree at (36, 40) r 0.9 -> box x 35.1..36.9, z 39.1..40.9. Plant the tank inside it.
+  p.x = 36.3; p.z = 40.2;
+  g.setInput(p.id, 0);
+  g.update(DT);
+  assert.ok(Math.hypot(p.x - 36, p.z - 40) >= 0.9 + 1.1 - 0.01, `should be outside the tree, at ${p.x},${p.z}`);
+  const before = { x: p.x, z: p.z };
+  g.setInput(p.id, INPUT.UP);
+  run(g, 1);
+  assert.ok(p.z < before.z - 5, 'drives freely afterwards');
+});
+
+test('tank separation cannot leave a tank inside cover', () => {
+  const g = new Game();
+  const a = g.addPlayer('a');
+  const b = g.addPlayer('b');
+  // Tree box x 35.1..36.9 at z 39.1..40.9. Put b just left of it and a overlapping b from the left.
+  b.x = 33.9; b.z = 40; a.x = 32.9; a.z = 40;
+  run(g, 1);
+  for (const t of [a, b]) {
+    assert.ok(Math.hypot(t.x - 36, t.z - 40) >= 1.99, `${t.name} ended inside the tree at ${t.x},${t.z}`);
+  }
+  assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= 2.19, 'tanks are apart');
+});

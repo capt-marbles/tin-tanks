@@ -72,6 +72,45 @@ export function segmentCircle(x, z, nx, nz, cx, cz, radius) {
   return t >= 0 && t <= 1 ? t : null;
 }
 
+/**
+ * Push a circle out of any solid it overlaps. Tanks never get there by driving
+ * (moves into cover are rejected) but tank-vs-tank separation can shove one
+ * into a tree; without this it would be stuck for good. Mutates `c` ({x, z}).
+ */
+export function depenetrate(c, r, solids = SOLIDS) {
+  for (let pass = 0; pass < 3; pass++) {
+    let moved = false;
+    for (const box of solids) {
+      const nx = Math.max(box.x, Math.min(c.x, box.x + box.w));
+      const nz = Math.max(box.z, Math.min(c.z, box.z + box.d));
+      const dx = c.x - nx;
+      const dz = c.z - nz;
+      const d2 = dx * dx + dz * dz;
+      if (d2 >= r * r) continue;
+      moved = true;
+      if (d2 > 1e-9) {
+        // Centre is outside the box: push straight away from the nearest point.
+        const d = Math.sqrt(d2);
+        c.x += (dx / d) * (r - d + 1e-3);
+        c.z += (dz / d) * (r - d + 1e-3);
+      } else {
+        // Centre is inside the box: leave through the nearest face.
+        const exits = [
+          { dx: -(c.x - box.x + r), dz: 0 },
+          { dx: box.x + box.w - c.x + r, dz: 0 },
+          { dx: 0, dz: -(c.z - box.z + r) },
+          { dx: 0, dz: box.z + box.d - c.z + r },
+        ];
+        exits.sort((a, b) => Math.abs(a.dx) + Math.abs(a.dz) - (Math.abs(b.dx) + Math.abs(b.dz)));
+        c.x += exits[0].dx + Math.sign(exits[0].dx) * 1e-3;
+        c.z += exits[0].dz + Math.sign(exits[0].dz) * 1e-3;
+      }
+    }
+    if (!moved) return c;
+  }
+  return c;
+}
+
 /** Direction vector for an input mask. Returns null when no movement keys are held. */
 export function inputDirection(mask) {
   let dx = 0;
@@ -91,6 +130,7 @@ export function inputDirection(mask) {
  * Pure and deterministic so the client can run it for prediction.
  */
 export function stepTank(tank, mask, dt, map = MAP, solids = SOLIDS) {
+  depenetrate(tank, TANK_RADIUS, solids);
   const dir = inputDirection(mask);
   if (!dir) return tank;
 

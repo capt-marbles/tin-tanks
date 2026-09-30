@@ -4,7 +4,7 @@ import {
   FIRE_COOLDOWN, MUZZLE_OFFSET, RESPAWN_TIME, TANK_PAINT,
 } from '@tin-tanks/shared/constants';
 import { MAP } from '@tin-tanks/shared/map';
-import { stepTank, stepBullet } from '@tin-tanks/shared/physics';
+import { stepTank, stepBullet, depenetrate } from '@tin-tanks/shared/physics';
 
 export class Game {
   constructor(map = MAP) {
@@ -149,6 +149,8 @@ export class Game {
         dz /= dist;
         a.x -= dx * push; a.z -= dz * push;
         b.x += dx * push; b.z += dz * push;
+        depenetrate(a, TANK_RADIUS);
+        depenetrate(b, TANK_RADIUS);
         clampToMap(a, this.map);
         clampToMap(b, this.map);
       }
