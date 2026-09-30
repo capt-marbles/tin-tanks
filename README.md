@@ -119,6 +119,31 @@ the game server serves the client itself: an `http://` page can open a `ws://` s
 whereas a page hosted on HTTPS elsewhere could not. Put a TLS-terminating proxy or
 Gameye ingress in front if you need `https://` links.
 
+## Launcher (Cloudflare Worker)
+
+`launcher/` is a small Worker that keeps the Gameye API token server-side and
+turns a Play button into a match: it lists running `tin-tanks` sessions, joins the
+fullest one with a free slot, or starts a new session (pinned to `GAMEYE_TAG`,
+capped by `MAX_SESSIONS`), then sends the browser to `http://host:port/`.
+Deployed at <https://tin-tanks-launcher.gameye.workers.dev>.
+
+| Route | Purpose |
+|---|---|
+| `GET /` | Play page with live match list |
+| `POST /api/play` | `{ url, fresh, session }` or `{ error }` |
+| `GET /play` | Same as above but a 302 redirect, for a plain link |
+| `GET /api/status` | Running sessions with player counts |
+
+```bash
+cd launcher
+npx wrangler deploy
+npx wrangler secret put GAMEYE_API_TOKEN     # once
+```
+
+Environment (region, image, tag, caps) lives in `launcher/wrangler.toml`. A
+freshly started server answers within about six seconds; the page counts down
+before redirecting.
+
 ## How the netcode works
 
 - The client sends an input bitmask 30 times a second with a sequence number.

@@ -14,7 +14,8 @@
     "dev:client": "npm --workspace client run dev",
     "build": "npm --workspace client run build",
     "start": "npm --workspace server start",
-    "test": "npm --workspace server test",
+    "test": "npm --workspace server test && node --test \"launcher/test/**/*.test.js\"",
+    "launcher:deploy": "cd launcher && npx wrangler deploy",
     "bot": "node tools/bot.js",
     "docker:build": "docker build -t tin-tanks-claude:local .",
     "docker:run": "docker run --rm -p 8080:8080 tin-tanks-claude:local"
