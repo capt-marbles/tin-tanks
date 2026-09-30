@@ -1,9 +1,14 @@
 // Pure matchmaking helpers, kept free of Worker APIs so they can be unit tested.
 
 /** Pick the fullest running session that still has a free slot, or null. */
-export function pickSession(sessions, { image, maxPlayers }) {
+/** A session counts only if it runs our image (and the pinned tag, when one is set). */
+export function matches(s, { image, tag }) {
+  return s.image === image && s.status === 'running' && (!tag || s.tag === tag);
+}
+
+export function pickSession(sessions, { image, maxPlayers, tag }) {
   const open = sessions
-    .filter((s) => s.image === image && s.status === 'running')
+    .filter((s) => matches(s, { image, tag }))
     .map((s) => ({ ...s, players: Number(s.playerCount ?? 0) }))
     .filter((s) => s.players < maxPlayers)
     .sort((a, b) => b.players - a.players || a.created - b.created);
@@ -18,6 +23,6 @@ export function joinUrl(session) {
   return `http://${session.host}:${port}/`;
 }
 
-export function countRunning(sessions, image) {
-  return sessions.filter((s) => s.image === image && s.status === 'running').length;
+export function countRunning(sessions, image, tag) {
+  return sessions.filter((s) => matches(s, { image, tag })).length;
 }

@@ -33,3 +33,13 @@ test('join url from list shape and from create-response shape', () => {
 test('counts only running sessions of the image', () => {
   assert.equal(countRunning(sessions, 'tin-tanks'), 3);
 });
+
+test('a pinned tag ignores sessions on other builds', () => {
+  const s = [
+    { id: 'old', image: 'tin-tanks', tag: 'sha-old', status: 'running', playerCount: 1, created: 1 },
+    { id: 'new', image: 'tin-tanks', tag: 'sha-new', status: 'running', playerCount: 0, created: 2 },
+  ];
+  assert.equal(pickSession(s, { image: 'tin-tanks', maxPlayers: 4, tag: 'sha-new' }).id, 'new');
+  assert.equal(pickSession(s, { image: 'tin-tanks', maxPlayers: 4 }).id, 'old');
+  assert.equal(countRunning(s, 'tin-tanks', 'sha-new'), 1);
+});

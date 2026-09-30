@@ -53,10 +53,10 @@ async function listSessions(env) {
 async function findOrStart(env) {
   const maxPlayers = Number(env.MAX_PLAYERS || 4);
   const sessions = await listSessions(env);
-  const existing = pickSession(sessions, { image: env.GAMEYE_IMAGE, maxPlayers });
+  const existing = pickSession(sessions, { image: env.GAMEYE_IMAGE, maxPlayers, tag: env.GAMEYE_TAG });
   if (existing) return { url: joinUrl(existing), fresh: false, session: existing.id };
 
-  if (countRunning(sessions, env.GAMEYE_IMAGE) >= Number(env.MAX_SESSIONS || 2)) {
+  if (countRunning(sessions, env.GAMEYE_IMAGE, env.GAMEYE_TAG) >= Number(env.MAX_SESSIONS || 2)) {
     return { error: 'All matches are full right now. Try again in a minute.', status: 503 };
   }
   const id = crypto.randomUUID();
