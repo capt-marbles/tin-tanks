@@ -9,6 +9,7 @@ import { Input } from './input.js';
 import { Net, resolveServerUrl } from './net.js';
 import { Audio } from './audio.js';
 import { Hud } from './hud.js';
+import { createPipeline } from './post.js';
 
 const INTERP_DELAY = 100;   // ms: remote tanks are drawn this far behind the newest snapshot
 const VIEW_HEIGHT = 32;     // world units visible top-to-bottom (before the camera tilt)
@@ -16,10 +17,12 @@ const CAM_OFFSET = new THREE.Vector3(0, 50, 34);
 const SUN_OFFSET = new THREE.Vector3(-30, 70, 25);
 
 // ---------------------------------------------------------------- renderer
-const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance', stencil: false });
 renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.shadowMap.type = THREE.PCFShadowMap;
+let graphics = 'high';
+try { graphics = localStorage.getItem('tin-tanks-gfx') || 'high'; } catch { /* ignore */ }
 document.getElementById('app').appendChild(renderer.domElement);
 
 const scene = new THREE.Scene();
@@ -36,11 +39,13 @@ function resize() {
   camera.bottom = -VIEW_HEIGHT / 2;
   camera.updateProjectionMatrix();
   renderer.setSize(window.innerWidth, window.innerHeight);
+  if (pipeline) pipeline.setSize(window.innerWidth, window.innerHeight);
 }
-window.addEventListener('resize', resize);
-resize();
 
 const { sun } = buildWorld(scene, MAP);
+const pipeline = createPipeline(renderer, scene, camera);
+window.addEventListener('resize', resize);
+resize();
 const effects = new Effects(scene);
 const input = new Input();
 const audio = new Audio();
@@ -302,6 +307,8 @@ function interpolated(tank, renderTime) {
 
 function placeTank(tank, x, z, a, dt, snapNow) {
   const d = tank.display;
+  const px = d.x;
+  const pz = d.z;
   if (!d.init || snapNow || Math.hypot(d.x - x, d.z - z) > 6) {
     d.x = x; d.z = z; d.a = a; d.init = true;
   } else {
@@ -312,6 +319,13 @@ function placeTank(tank, x, z, a, dt, snapNow) {
   }
   tank.group.position.set(d.x, 0, d.z);
   tank.group.rotation.y = -d.a;
+  // Dust from the tracks while rolling.
+  const moved = Math.hypot(d.x - px, d.z - pz);
+  d.dust = (d.dust || 0) + moved;
+  if (moved > 0.02 && d.dust > 0.9) {
+    d.dust = 0;
+    effects.trackDust(d.x, d.z, d.a);
+  }
 }
 
 function updateTanks(now, dt) {
@@ -404,8 +418,18 @@ function frame(now) {
     hud.updateStatus(net ? net.ping : 0, roster.size, audio.muted);
   }
 
-  renderer.render(scene, camera);
+  if (graphics === 'high') pipeline.render(dt);
+  else renderer.render(scene, camera);
 }
+
+function toggleGraphics() {
+  graphics = graphics === 'high' ? 'low' : 'high';
+  try { localStorage.setItem('tin-tanks-gfx', graphics); } catch { /* ignore */ }
+  hud.showMessage(graphics === 'high' ? 'FANCY GRAPHICS' : 'PLAIN GRAPHICS', graphics === 'high' ? 'ambient occlusion, bloom, SMAA' : 'direct render, for slower machines', 1200);
+}
+window.addEventListener('keydown', (e) => {
+  if (e.code === 'KeyG' && !e.repeat && !(e.target && e.target.tagName === 'INPUT')) toggleGraphics();
+});
 
 // ---------------------------------------------------------------- boot
 const nameInput = document.getElementById('name');

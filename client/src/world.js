@@ -2,7 +2,7 @@ import * as THREE from 'three';
 import { MAP } from '@tin-tanks/shared/map';
 import { toon, toonBox, addOutline, GRADIENT } from './materials.js';
 
-const PX_PER_UNIT = 12;
+const PX_PER_UNIT = 20;
 
 /** Paint the ground: grass, dusty roads, craters and scorch marks. */
 function groundTexture(map) {
@@ -30,13 +30,13 @@ function groundTexture(map) {
 
   // Tufts of grass: little darker strokes.
   ctx.strokeStyle = '#5e8a35';
-  ctx.lineWidth = 2;
-  for (let i = 0; i < 2500; i++) {
+  ctx.lineWidth = 3;
+  for (let i = 0; i < 4000; i++) {
     const x = rand() * canvas.width;
     const y = rand() * canvas.height;
     ctx.beginPath();
     ctx.moveTo(x, y);
-    ctx.lineTo(x + (rand() - 0.5) * 6, y - 4 - rand() * 6);
+    ctx.lineTo(x + (rand() - 0.5) * 9, y - 6 - rand() * 9);
     ctx.stroke();
   }
 
@@ -105,7 +105,7 @@ function groundTexture(map) {
 
   const tex = new THREE.CanvasTexture(canvas);
   tex.colorSpace = THREE.SRGBColorSpace;
-  tex.anisotropy = 4;
+  tex.anisotropy = 8;
   return tex;
 }
 
@@ -368,7 +368,7 @@ export function buildWorld(scene, map = MAP) {
   scene.add(new THREE.HemisphereLight(0xdfe9ff, 0x8a9a5b, 0.9));
   const sun = new THREE.DirectionalLight(0xfff1d6, 2.2);
   sun.castShadow = true;
-  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.mapSize.set(4096, 4096);
   sun.shadow.camera.near = 1;
   sun.shadow.camera.far = 220;
   sun.shadow.camera.left = -60;
@@ -377,6 +377,7 @@ export function buildWorld(scene, map = MAP) {
   sun.shadow.camera.bottom = -60;
   sun.shadow.bias = -0.0008;
   sun.shadow.normalBias = 0.02;
+  sun.shadow.radius = 3;
   scene.add(sun);
   scene.add(sun.target);
 

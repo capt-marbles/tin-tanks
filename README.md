@@ -144,6 +144,15 @@ Environment (region, image, tag, caps) lives in `launcher/wrangler.toml`. A
 freshly started server answers within about six seconds; the page counts down
 before redirecting.
 
+## Graphics
+
+The client renders through [pmndrs/postprocessing](https://github.com/pmndrs/postprocessing)
+with [N8AO](https://github.com/N8python/n8ao) screen-space ambient occlusion, bloom on
+muzzle flashes and explosions, a saturation/contrast punch, a vignette and SMAA
+anti-aliasing (`client/src/post.js`). Muzzle flashes and explosions also drive a
+small pool of point lights, and moving tanks kick up dust. Press **G** to switch to a
+plain direct render on slower machines; the choice is remembered per browser.
+
 ## How the netcode works
 
 - The client sends an input bitmask 30 times a second with a sequence number.

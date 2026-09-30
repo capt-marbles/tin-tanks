@@ -8,6 +8,24 @@ export class Effects {
   constructor(scene) {
     this.scene = scene;
     this.items = [];
+    // A small pool of point lights for muzzle flashes and explosions.
+    this.lights = Array.from({ length: 4 }, () => {
+      const light = new THREE.PointLight(0xffffff, 0, 18, 2);
+      light.visible = false;
+      scene.add(light);
+      return { light, life: 0, maxLife: 0, peak: 0 };
+    });
+  }
+
+  flashLight(x, z, color, peak, life) {
+    const slot = this.lights.find((l) => l.life <= 0) || this.lights.reduce((a, b) => (a.life < b.life ? a : b));
+    slot.light.color.set(color);
+    slot.light.position.set(x, 2.2, z);
+    slot.light.visible = true;
+    slot.light.intensity = peak;
+    slot.life = life;
+    slot.maxLife = life;
+    slot.peak = peak;
   }
 
   spawn({ geometry = sphereGeo, color, x, y, z, vx = 0, vy = 0, vz = 0, life, size = 1, grow = 0, gravity = 0, flat = false, fade = true }) {
@@ -22,6 +40,7 @@ export class Effects {
 
   muzzleFlash(x, z, angle) {
     const y = 1.45;
+    this.flashLight(x, z, 0xffb347, 90, 0.12);
     this.spawn({ color: 0xfff1a8, x, y, z, life: 0.08, size: 0.7, grow: 12 });
     this.spawn({ color: 0xffa62b, x, y, z, life: 0.12, size: 0.45, grow: 6 });
     for (let i = 0; i < 4; i++) {
@@ -29,6 +48,15 @@ export class Effects {
       const s = 8 + Math.random() * 6;
       this.spawn({ color: 0xbfb8a8, x, y, z, vx: Math.cos(a) * s, vy: 2, vz: Math.sin(a) * s, life: 0.3, size: 0.25, grow: 1.5 });
     }
+  }
+
+  /** Little dust kicked up behind a moving tank. */
+  trackDust(x, z, heading) {
+    const back = heading + Math.PI + (Math.random() - 0.5) * 0.8;
+    const side = (Math.random() < 0.5 ? -1 : 1) * 0.9;
+    const sx = x + Math.cos(heading + Math.PI) * 1.2 + Math.cos(heading + Math.PI / 2) * side;
+    const sz = z + Math.sin(heading + Math.PI) * 1.2 + Math.sin(heading + Math.PI / 2) * side;
+    this.spawn({ color: Math.random() < 0.5 ? 0xd7c49a : 0xbfae86, x: sx, y: 0.25, z: sz, vx: Math.cos(back) * 1.2, vy: 0.9, vz: Math.sin(back) * 1.2, life: 0.6 + Math.random() * 0.3, size: 0.22, grow: 1.1 });
   }
 
   dustPuff(x, z) {
@@ -49,6 +77,7 @@ export class Effects {
   }
 
   explosion(x, z) {
+    this.flashLight(x, z, 0xff7a1a, 400, 0.55);
     this.spawn({ color: 0xfff4c2, x, y: 1.2, z, life: 0.18, size: 1.5, grow: 25 });
     this.spawn({ geometry: ringGeo, color: 0xffd166, x, y: 0.15, z, life: 0.45, size: 1, grow: 30, flat: true });
     for (let i = 0; i < 16; i++) {
@@ -72,6 +101,12 @@ export class Effects {
   }
 
   update(dt) {
+    for (const l of this.lights) {
+      if (l.life <= 0) continue;
+      l.life -= dt;
+      if (l.life <= 0) { l.light.visible = false; l.light.intensity = 0; continue; }
+      l.light.intensity = l.peak * (l.life / l.maxLife);
+    }
     const keep = [];
     for (const it of this.items) {
       it.life -= dt;
