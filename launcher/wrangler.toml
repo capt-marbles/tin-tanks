@@ -11,7 +11,7 @@ account_id = "6fe01292662c1234adaf972a1a621d14"   # Gameye
 [vars]
 GAMEYE_API_URL = "https://api.planz-development.gameye.net"
 GAMEYE_IMAGE = "tin-tanks"
-GAMEYE_TAG = "sha-9882d67d0d55"   # image tag to start; must be registered on the application
+GAMEYE_TAG = "sha-8fc1ef62e17e"   # image tag to start; must be registered on the application
 GAMEYE_LOCATION = "eu-central-1"
 MAX_PLAYERS = "4"
 MAX_SESSIONS = "2"      # cap on concurrently running matches this launcher will start
