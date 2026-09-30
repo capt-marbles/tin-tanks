@@ -5,16 +5,16 @@ export const TICK_RATE = 30;          // server simulation ticks per second
 export const DT = 1 / TICK_RATE;
 export const MAX_PLAYERS = 4;
 
-export const TANK_SPEED = 9;          // m/s
-export const TANK_TURN_RATE = 10;     // rad/s, how fast the hull swings to face travel direction
+export const TANK_SPEED = 6.75;       // m/s (was 9; whole game slowed 25% for less twitch)
+export const TANK_TURN_RATE = 7.5;    // rad/s, how fast the hull swings to face travel direction
 export const TANK_RADIUS = 1.1;       // collision circle
 export const TANK_HP = 100;
 
-export const BULLET_SPEED = 30;       // m/s
+export const BULLET_SPEED = 22.5;     // m/s
 export const BULLET_RADIUS = 0.3;
-export const BULLET_LIFE = 1.6;       // seconds before a shell fizzles out
+export const BULLET_LIFE = 2.13;      // seconds before a shell fizzles out (range unchanged at ~48 m)
 export const BULLET_DAMAGE = 34;      // three hits to a kill
-export const FIRE_COOLDOWN = 0.5;     // seconds between shots
+export const FIRE_COOLDOWN = 0.65;    // seconds between shots
 export const MUZZLE_OFFSET = 1.9;     // distance from hull centre to barrel tip
 
 export const RESPAWN_TIME = 3;        // seconds
