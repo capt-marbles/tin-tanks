@@ -22,6 +22,8 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { DT, SNAPSHOT_EVERY, TICK_RATE } from '@tin-tanks/shared/constants';
 import { Game } from './game.js';
+import { createGameyeReporter } from './gameye.js';
+import { randomUUID } from 'node:crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const CLIENT_DIR = path.resolve(__dirname, '../../client/dist');
@@ -45,7 +47,8 @@ const MIME = {
 };
 
 const game = new Game();
-const clients = new Map(); // ws -> { playerId, alive }
+const clients = new Map(); // ws -> { playerId, alive, gameyePlayerId }
+const gameye = createGameyeReporter({ log });
 const startedAt = Date.now();
 
 const server = http.createServer((req, res) => {
@@ -88,7 +91,9 @@ wss.on('connection', (ws, req) => {
         return;
       }
       client.playerId = player.id;
+      client.gameyePlayerId = `tank-${randomUUID()}`;
       log(`join  #${player.id} "${player.name}" from ${remoteAddress(req)} (${game.players.size}/4)`);
+      gameye.playerJoined(client.gameyePlayerId);
       send(ws, { t: 'welcome', id: player.id, tickRate: TICK_RATE, roster: game.roster() });
       broadcastRoster();
       return;
@@ -111,6 +116,7 @@ wss.on('connection', (ws, req) => {
       log(`leave #${client.playerId} "${p ? p.name : '?'}" (${game.players.size - 1}/4)`);
       game.removePlayer(client.playerId);
       broadcastRoster();
+      gameye.playerLeft(client.gameyePlayerId);
     }
   });
 
@@ -252,10 +258,11 @@ server.listen(PORT, HOST, () => {
   log(`Tin Tanks server listening on ${HOST}:${PORT} (${TICK_RATE} Hz)`);
   log(`idle shutdown: ${IDLE_SHUTDOWN_SECONDS > 0 ? `${IDLE_SHUTDOWN_SECONDS}s` : 'disabled'}`);
   log(`client dir: ${CLIENT_DIR} ${fs.existsSync(CLIENT_DIR) ? '(found)' : '(missing, run npm run build)'}`);
-  const gameye = Object.entries(process.env)
+  const gameyeEnv = Object.entries(process.env)
     .filter(([k]) => k.startsWith('GAMEYE_'))
-    .map(([k, v]) => `${k}=${v}`);
-  if (gameye.length) log(`gameye env: ${gameye.join(' ')}`);
+    .map(([k, v]) => `${k}=${/TOKEN|SECRET|KEY|PASSWORD/i.test(k) ? '<redacted>' : v}`);
+  if (gameyeEnv.length) log(`gameye env: ${gameyeEnv.join(' ')}`);
+  log(`gameye player reporting: ${gameye.enabled ? `on (${gameye.apiUrl}, session ${gameye.sessionId})` : 'off (set GAMEYE_API_TOKEN)'}`);
   const ip = process.env.GAMEYE_IP || process.env.GAMEYE_HOST;
   const hostPort = process.env[`GAMEYE_PORT_TCP_${CONTAINER_PORT}`];
   if (ip && hostPort) log(`join link: http://${ip}:${hostPort}/`);

@@ -56,6 +56,15 @@ The server reads its port in this order: `--port=N` argument, `PORT` env var,
 an abandoned Gameye session ends on its own. `/health` returns
 JSON with player count, tick and uptime and backs the image HEALTHCHECK.
 
+### Live player counts on Gameye
+
+Set `GAMEYE_API_TOKEN` (and `GAMEYE_API_URL` when not on production, e.g. the
+sandbox base) in the session's `env`, and the server reports every join and leave
+to `PUT /session/player/join` and `DELETE /session/player/leave`. The session id
+comes from the `GAMEYE_CONTAINER` variable Gameye injects. This keeps
+`playerCount` on `GET /session` live, which is what the `playerCount[lt]` backfill
+filter needs. Without a token the server runs normally and reports nothing.
+
 ## Host it on Gameye
 
 Gameye nodes run linux/amd64, so build for that platform when pushing from an
@@ -86,9 +95,10 @@ Apple Silicon machine.
      -H "Authorization: Bearer $GAMEYE_TOKEN" \
      -H "Content-Type: application/json" \
      -d '{
-       "id": "tin-tanks-'$(uuidgen | tr A-Z a-z)'",
+       "id": "'$(uuidgen | tr A-Z a-z)'",
        "location": "europe",
        "image": "tin-tanks",
+       "env": { "GAMEYE_API_TOKEN": "'$GAMEYE_TOKEN'" },
        "ttl": "1h"
      }'
    ```
