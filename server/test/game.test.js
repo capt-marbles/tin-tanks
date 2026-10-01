@@ -168,3 +168,25 @@ test('tank separation cannot leave a tank inside cover', () => {
   }
   assert.ok(Math.hypot(a.x - b.x, a.z - b.z) >= 2.19, 'tanks are apart');
 });
+
+test('round ends at the kill limit and can be reset', () => {
+  const g = new Game();
+  const a = g.addPlayer('ace');
+  const b = g.addPlayer('target');
+  for (let i = 0; i < 10; i++) {
+    b.alive = true; b.hp = 1;
+    g.damage(b, a.id);
+  }
+  assert.equal(a.kills, 10);
+  assert.equal(g.over, true);
+  assert.equal(g.winner, a.id);
+  const events = g.snapshot().ev;
+  const over = events.find((e) => e.e === 'over');
+  assert.ok(over && over.winner === a.id && over.results[0].name === 'ace');
+  assert.equal(events.filter((e) => e.e === 'over').length, 1, 'fires once');
+  g.resetMatch();
+  assert.equal(g.over, false);
+  assert.equal(a.kills, 0);
+  assert.equal(b.alive, true);
+  assert.ok(g.snapshot().ev.some((e) => e.e === 'reset'));
+});

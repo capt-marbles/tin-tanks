@@ -119,13 +119,34 @@ the game server serves the client itself: an `http://` page can open a `ws://` s
 whereas a page hosted on HTTPS elsewhere could not. Put a TLS-terminating proxy or
 Gameye ingress in front if you need `https://` links.
 
+## Matchmaking with gameye-rooms
+
+The server speaks the gameye-rooms managed-server lifecycle (`server/src/matchmaker.js`).
+When the matchmaker starts it through Gameye with `MM_URL`, `MM_MATCH_ID` and
+`MM_SERVER_TOKEN` in the env, the server posts `ready`, heartbeats every 30 s, admits
+only players whose match token validates offline (HMAC with the server token), reports
+joins and leaves, advertises freed slots for backfill, and posts `complete` with the
+scoreboard when a round ends (first to `KILL_LIMIT` kills), then exits. Without `MM_*`
+it runs as an open server that simply starts a new round after each win.
+
+Players arrive as `http://host:port/?token=<playerToken>&name=<call sign>`.
+
+`tools/onboard-tenant.sh` creates the tenant on a gameye-rooms worker (tenant config is
+immutable, so each new image tag needs a new tenant id).
+
 ## Launcher (Cloudflare Worker)
 
-`launcher/` is a small Worker that keeps the Gameye API token server-side and
-turns a Play button into a match: it lists running `tin-tanks` sessions, joins the
-fullest one with a free slot, or starts a new session (pinned to `GAMEYE_TAG`,
-capped by `MAX_SESSIONS`), then sends the browser to `http://host:port/`.
-Deployed at <https://tin-tanks-launcher.gameye.workers.dev>.
+`launcher/` is a small Worker deployed at <https://tin-tanks-launcher.gameye.workers.dev>
+with two modes:
+
+- **matchmaker** (default when `MM_URL` is set): the page is a browser client for
+  gameye-rooms — quick match, create a private lobby, join by code — talking to the
+  matchmaker through the same-origin `/mm/*` proxy (the matchmaker sets no CORS headers).
+  It polls the queue and room, and once the room is live redirects to the server with
+  the player's match token.
+- **direct** (`MODE=direct`): the Worker keeps a Gameye token itself, joins the fullest
+  running `tin-tanks` session with a free slot or starts one (pinned to `GAMEYE_TAG`,
+  capped by `MAX_SESSIONS`), and redirects to `http://host:port/`.
 
 | Route | Purpose |
 |---|---|

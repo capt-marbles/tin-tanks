@@ -18,7 +18,7 @@ export class Net {
     if (this.handlers[type]) this.handlers[type](payload);
   }
 
-  connect(name) {
+  connect(name, token = null) {
     return new Promise((resolve, reject) => {
       const ws = new WebSocket(this.url);
       this.ws = ws;
@@ -26,7 +26,7 @@ export class Net {
 
       ws.onopen = () => {
         opened = true;
-        ws.send(JSON.stringify({ t: 'join', name }));
+        ws.send(JSON.stringify(token ? { t: 'join', name, token } : { t: 'join', name }));
         this._pingTimer = setInterval(() => this.sendPing(), 2000);
         this.sendPing();
         resolve();

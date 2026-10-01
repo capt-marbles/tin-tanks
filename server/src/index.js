@@ -20,9 +20,10 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
-import { DT, SNAPSHOT_EVERY, TICK_RATE } from '@tin-tanks/shared/constants';
+import { DT, SNAPSHOT_EVERY, TICK_RATE, MAX_PLAYERS, ROUND_END_SECONDS } from '@tin-tanks/shared/constants';
 import { Game } from './game.js';
 import { createGameyeReporter } from './gameye.js';
+import { createMatchmakerClient } from './matchmaker.js';
 import { randomUUID } from 'node:crypto';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -47,8 +48,16 @@ const MIME = {
 };
 
 const game = new Game();
-const clients = new Map(); // ws -> { playerId, alive, gameyePlayerId }
-const gameye = createGameyeReporter({ log });
+const clients = new Map(); // ws -> { playerId, alive, gameyePlayerId, mmPlayerId }
+// The matchmaker's reserved env prefixes block GAMEYE_* in tenant serverEnv, so
+// accept TT_-prefixed aliases for the player-count reporter as well.
+const gameye = createGameyeReporter({
+  log,
+  token: process.env.GAMEYE_API_TOKEN || process.env.TT_GAMEYE_API_TOKEN,
+  apiUrl: process.env.GAMEYE_API_URL || process.env.TT_GAMEYE_API_URL || undefined,
+});
+const matchmaker = createMatchmakerClient({ log });
+let roundEndTimer = null;
 const startedAt = Date.now();
 
 const server = http.createServer((req, res) => {
@@ -84,6 +93,17 @@ wss.on('connection', (ws, req) => {
     if (!msg || typeof msg !== 'object') return;
 
     if (msg.t === 'join' && client.playerId === null) {
+      // Matchmade servers only admit players holding a valid token for this match.
+      let mmPlayerId = null;
+      if (matchmaker.enabled) {
+        mmPlayerId = matchmaker.validatePlayerToken(msg.token);
+        if (!mmPlayerId) {
+          log(`denied join from ${remoteAddress(req)}: bad or missing match token`);
+          send(ws, { t: 'denied', reason: 'This server belongs to a matchmade game. Use the matchmaker to join.' });
+          ws.close(1008, 'invalid match token');
+          return;
+        }
+      }
       const player = game.addPlayer(msg.name);
       if (!player) {
         send(ws, { t: 'full' });
@@ -92,8 +112,10 @@ wss.on('connection', (ws, req) => {
       }
       client.playerId = player.id;
       client.gameyePlayerId = `tank-${randomUUID()}`;
+      client.mmPlayerId = mmPlayerId;
       log(`join  #${player.id} "${player.name}" from ${remoteAddress(req)} (${game.players.size}/4)`);
       gameye.playerJoined(client.gameyePlayerId);
+      if (mmPlayerId) matchmaker.joined(mmPlayerId);
       send(ws, { t: 'welcome', id: player.id, tickRate: TICK_RATE, roster: game.roster() });
       broadcastRoster();
       return;
@@ -117,6 +139,10 @@ wss.on('connection', (ws, req) => {
       game.removePlayer(client.playerId);
       broadcastRoster();
       gameye.playerLeft(client.gameyePlayerId);
+      if (client.mmPlayerId) {
+        matchmaker.left(client.mmPlayerId);
+        matchmaker.slots(MAX_PLAYERS - game.players.size);
+      }
     }
   });
 
@@ -148,11 +174,28 @@ const heartbeat = setInterval(() => {
   }
 }, 10_000);
 
+function onRoundOver() {
+  if (roundEndTimer) return;
+  const results = game.results();
+  log(`round over: ${results.map((r) => `${r.name} ${r.kills}/${r.deaths}`).join(', ')}`);
+  roundEndTimer = setTimeout(async () => {
+    roundEndTimer = null;
+    if (matchmaker.enabled) {
+      // A matchmade game is one round: report results and let the session end.
+      await matchmaker.complete({ winner: game.winner, players: results });
+      shutdown('match complete');
+    } else {
+      game.resetMatch();
+    }
+  }, ROUND_END_SECONDS * 1000);
+}
+
 function broadcastSnapshot() {
   if (clients.size === 0) {
     game.events.length = 0;
     return;
   }
+  if (game.events.some((e) => e.e === 'over')) onRoundOver();
   const snap = game.snapshot();
   for (const [ws, client] of clients) {
     if (ws.readyState !== ws.OPEN) continue;
@@ -236,6 +279,7 @@ function shutdown(signal) {
   clearInterval(loop);
   clearInterval(heartbeat);
   clearInterval(idleWatch);
+  matchmaker.stop();
   for (const ws of clients.keys()) ws.close(1001, 'server shutting down');
   server.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 2000).unref();
@@ -259,10 +303,13 @@ server.listen(PORT, HOST, () => {
   log(`idle shutdown: ${IDLE_SHUTDOWN_SECONDS > 0 ? `${IDLE_SHUTDOWN_SECONDS}s` : 'disabled'}`);
   log(`client dir: ${CLIENT_DIR} ${fs.existsSync(CLIENT_DIR) ? '(found)' : '(missing, run npm run build)'}`);
   const gameyeEnv = Object.entries(process.env)
-    .filter(([k]) => k.startsWith('GAMEYE_'))
+    .filter(([k]) => k.startsWith('GAMEYE_') || k.startsWith('TT_') || k === 'MM_URL' || k === 'MM_MATCH_ID')
     .map(([k, v]) => `${k}=${/TOKEN|SECRET|KEY|PASSWORD/i.test(k) ? '<redacted>' : v}`);
+  // GAMEYE_* above; matchmaker vars are MM_* and hold a secret, so only note their presence.
   if (gameyeEnv.length) log(`gameye env: ${gameyeEnv.join(' ')}`);
   log(`gameye player reporting: ${gameye.enabled ? `on (${gameye.apiUrl}, session ${gameye.sessionId})` : 'off (set GAMEYE_API_TOKEN)'}`);
+  log(`matchmaker lifecycle: ${matchmaker.enabled ? `managed (${matchmaker.url}, match ${matchmaker.matchId.slice(0, 12)}…)` : 'off (no MM_URL)'}`);
+  if (matchmaker.enabled) matchmaker.start();
   const ip = process.env.GAMEYE_IP || process.env.GAMEYE_HOST;
   const hostPort = process.env[`GAMEYE_PORT_TCP_${CONTAINER_PORT}`];
   if (ip && hostPort) log(`join link: http://${ip}:${hostPort}/`);

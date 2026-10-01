@@ -9,6 +9,11 @@ compatibility_date = "2026-09-01"
 account_id = "6fe01292662c1234adaf972a1a621d14"   # Gameye
 
 [vars]
+MODE = "matchmaker"
+MM_URL = "https://tin-tanks-rooms.gameye.workers.dev"
+MM_TENANT = "tin-tanks"
+MM_PLAYLIST = "ffa-4"
+KILL_LIMIT = "10"
 GAMEYE_API_URL = "https://api.planz-development.gameye.net"
 GAMEYE_IMAGE = "tin-tanks"
 GAMEYE_TAG = "sha-8fc1ef62e17e"   # image tag to start; must be registered on the application

@@ -18,6 +18,8 @@ export const FIRE_COOLDOWN = 0.65;    // seconds between shots
 export const MUZZLE_OFFSET = 1.9;     // distance from hull centre to barrel tip
 
 export const RESPAWN_TIME = 3;        // seconds
+export const KILL_LIMIT = 10;         // first to this many kills wins the round
+export const ROUND_END_SECONDS = 8;   // victory screen before the round resets / the match completes
 export const SNAPSHOT_EVERY = 1;      // broadcast a snapshot every N ticks
 export const ROUND_TIME = 180;
 export const WIN_SCORE = 10;

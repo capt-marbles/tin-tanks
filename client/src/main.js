@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { DT, RESPAWN_TIME, TANK_PAINT, BULLET_SPEED, MAX_PLAYERS } from '@tin-tanks/shared/constants';
+import { DT, RESPAWN_TIME, TANK_PAINT, BULLET_SPEED, MAX_PLAYERS, KILL_LIMIT, ROUND_END_SECONDS } from '@tin-tanks/shared/constants';
 import { MAP } from '@tin-tanks/shared/map';
 import { stepTank, angleLerp } from '@tin-tanks/shared/physics';
 import { buildWorld } from './world.js';
@@ -216,6 +216,16 @@ function handleEvent(ev) {
       if (ev.id === myId) hud.showMessage('ROLL OUT!', 'Find cover, then find a target.', 1500);
       break;
     }
+    case 'over': {
+      const mine = ev.winner === myId;
+      const board = ev.results.slice(0, 4).map((r) => `${r.name} ${r.kills}`).join(' · ');
+      hud.showMessage(mine ? 'VICTORY!' : `${ev.name.toUpperCase()} WINS`, `${board} · next round in ${ROUND_END_SECONDS}s`, ROUND_END_SECONDS * 1000);
+      if (mine) shake = Math.max(shake, 0.5);
+      break;
+    }
+    case 'reset':
+      hud.showMessage('NEW ROUND', `First to ${KILL_LIMIT} kills`, 2000);
+      break;
     case 'join':
       if (ev.id !== myId) hud.addFeed(`${ev.name} rolled in`);
       break;
@@ -226,6 +236,10 @@ function handleEvent(ev) {
       break;
   }
 }
+
+// Matchmade joins arrive as http://host:port/?token=<playerToken>&name=<call sign>
+const PARAMS = new URLSearchParams(location.search);
+const MATCH_TOKEN = PARAMS.get('token') || null;
 
 async function deploy() {
   const name = document.getElementById('name').value.trim() || 'Sarge';
@@ -246,12 +260,15 @@ async function deploy() {
     input.enabled = true;
     input.mask = 0;
     document.getElementById('overlay').classList.add('hidden');
-    hud.showMessage('ROLL OUT!', 'WASD to move, SPACE to fire', 2500);
+    hud.showMessage('ROLL OUT!', `WASD to move, SPACE to fire · first to ${KILL_LIMIT} kills`, 2500);
   });
   net.on('roster', (msg) => setRoster(msg.roster));
   net.on('s', onSnapshot);
   net.on('full', () => {
     status.textContent = `Server is full (${MAX_PLAYERS}/${MAX_PLAYERS}). Try again in a moment.`;
+  });
+  net.on('denied', (msg) => {
+    status.textContent = msg.reason || 'This server did not let you in.';
   });
   net.on('close', (e) => {
     const wasConnected = connected;
@@ -260,13 +277,13 @@ async function deploy() {
     button.disabled = false;
     document.getElementById('overlay').classList.remove('hidden');
     if (wasConnected) status.textContent = `Disconnected${e.reason ? `: ${e.reason}` : ''}. Deploy again to rejoin.`;
-    else if (!status.textContent.startsWith('Server is full')) status.textContent = 'Could not reach the game server.';
+    else if (!status.textContent) status.textContent = 'Could not reach the game server.';
     hud.hideMessage();
     clearWorld();
   });
 
   try {
-    await net.connect(name);
+    await net.connect(name, MATCH_TOKEN);
   } catch (err) {
     status.textContent = err.message;
     button.disabled = false;
@@ -433,7 +450,10 @@ window.addEventListener('keydown', (e) => {
 
 // ---------------------------------------------------------------- boot
 const nameInput = document.getElementById('name');
-try { nameInput.value = localStorage.getItem('tin-tanks-name') || ''; } catch { /* ignore */ }
+try { nameInput.value = PARAMS.get('name') || localStorage.getItem('tin-tanks-name') || ''; } catch { nameInput.value = PARAMS.get('name') || ''; }
+if (MATCH_TOKEN) {
+  document.querySelector('.card p.tag').textContent = 'Your match is ready. Pick a call sign and deploy.';
+}
 nameInput.addEventListener('keydown', (e) => { if (e.key === 'Enter') deploy(); });
 document.getElementById('deploy').addEventListener('click', deploy);
 document.getElementById('server-label').textContent = `server: ${resolveServerUrl()}`;

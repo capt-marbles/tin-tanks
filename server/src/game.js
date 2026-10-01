@@ -1,7 +1,7 @@
 // Authoritative game simulation. No networking in here so it can be unit tested.
 import {
   MAX_PLAYERS, TANK_HP, TANK_RADIUS, INPUT, BULLET_LIFE, BULLET_DAMAGE, BULLET_RADIUS,
-  FIRE_COOLDOWN, MUZZLE_OFFSET, RESPAWN_TIME, TANK_PAINT,
+  FIRE_COOLDOWN, MUZZLE_OFFSET, RESPAWN_TIME, TANK_PAINT, KILL_LIMIT,
 } from '@tin-tanks/shared/constants';
 import { MAP } from '@tin-tanks/shared/map';
 import { stepTank, stepBullet, depenetrate } from '@tin-tanks/shared/physics';
@@ -18,6 +18,28 @@ export class Game {
     this.nextBulletId = 1;
     this.rosterVersion = 0;
     this.lastOccupied = 0;    // sim time when a player was last present
+    this.over = false;        // round finished (kill limit reached)
+    this.winner = null;
+  }
+
+  /** Start a fresh round: scores to zero, everyone respawned. */
+  resetMatch() {
+    this.over = false;
+    this.winner = null;
+    this.bullets = [];
+    for (const p of this.players.values()) {
+      p.kills = 0;
+      p.deaths = 0;
+      this.spawn(p);
+    }
+    this.events.push({ e: 'reset' });
+  }
+
+  /** Scoreboard snapshot for results / HUD. */
+  results() {
+    return [...this.players.values()]
+      .map((p) => ({ id: p.id, name: p.name, kills: p.kills, deaths: p.deaths }))
+      .sort((a, b) => b.kills - a.kills || a.deaths - b.deaths);
   }
 
   /** Seconds since the last player left (or since start, if nobody ever joined). */
@@ -192,6 +214,11 @@ export class Game {
     this.events.push({
       e: 'kill', victim: victim.id, killer: attackerId, x: victim.x, z: victim.z,
     });
+    if (attacker && !this.over && attacker.kills >= KILL_LIMIT) {
+      this.over = true;
+      this.winner = attacker.id;
+      this.events.push({ e: 'over', winner: attacker.id, name: attacker.name, results: this.results() });
+    }
   }
 
   roster() {

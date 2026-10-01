@@ -13,6 +13,7 @@ import { wrapAngle, circleHitsSolid } from '@tin-tanks/shared/physics';
 const args = process.argv.slice(2);
 const url = args.find((a) => !a.startsWith('--')) || 'ws://localhost:8080';
 const name = (args.find((a) => a.startsWith('--name=')) || '--name=Fritz').slice(7);
+const token = (args.find((a) => a.startsWith('--token=')) || '--token=').slice(8) || null; // matchmade servers need a player token
 const RANGE = 42;
 const CELL = 2;
 
@@ -120,13 +121,14 @@ let unstick = { until: 0, mask: 0 };
 let wanderGoal = null;
 
 ws.on('open', () => {
-  ws.send(JSON.stringify({ t: 'join', name }));
+  ws.send(JSON.stringify(token ? { t: 'join', name, token } : { t: 'join', name }));
   console.log(`[bot ${name}] connected to ${url}`);
 });
 ws.on('message', (raw) => {
   const msg = JSON.parse(raw.toString());
   if (msg.t === 'welcome') { myId = msg.id; console.log(`[bot ${name}] joined as #${myId}`); }
   if (msg.t === 'full') { console.log(`[bot ${name}] server full`); process.exit(1); }
+  if (msg.t === 'denied') { console.log(`[bot ${name}] denied: ${msg.reason}`); process.exit(2); }
   if (msg.t === 's') {
     for (const [id, x, z, a, hp, alive, kills, deaths] of msg.p) players.set(id, { x, z, a, hp, alive: !!alive, kills, deaths });
     for (const id of [...players.keys()]) if (!msg.p.some((p) => p[0] === id)) players.delete(id);
