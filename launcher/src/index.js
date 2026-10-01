@@ -125,7 +125,9 @@ async function proxyMatchmaker(request, env, rest) {
   const target = `${env.MM_URL.replace(/\/+$/, '')}/v1/${path}${query ? `?${query}` : ''}`;
   const init = { method: request.method, headers: { 'Content-Type': 'application/json' }, signal: AbortSignal.timeout(15000) };
   if (request.method !== 'GET' && request.method !== 'HEAD') init.body = await request.text();
-  const res = await fetch(target, init);
+  // Same-account worker-to-worker traffic needs the service binding; the public
+  // URL is still used so the matchmaker sees the right origin for MM_URL.
+  const res = env.MM ? await env.MM.fetch(new Request(target, init)) : await fetch(target, init);
   return new Response(await res.text(), { status: res.status, headers: { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' } });
 }
 

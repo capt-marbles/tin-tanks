@@ -21,3 +21,9 @@ GAMEYE_LOCATION = "eu-central-1"
 MAX_PLAYERS = "4"
 MAX_SESSIONS = "2"      # cap on concurrently running matches this launcher will start
 SESSION_TTL = "2h"
+
+# Worker-to-worker calls on the same account must go through a service binding
+# (a plain fetch to the other worker's workers.dev URL fails with error 1042).
+[[services]]
+binding = "MM"
+service = "tin-tanks-rooms"
