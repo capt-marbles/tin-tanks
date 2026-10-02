@@ -4,14 +4,14 @@
 #
 # Usage:
 #   MM_URL=https://tin-tanks-rooms.gameye.workers.dev PLATFORM_ADMIN_TOKEN=... GAMEYE_API_TOKEN=... \
-#   tools/onboard-tenant.sh <tenantId> <imageTag> [gameyeApiUrl]
+#   tools/onboard-tenant.sh <tenantId> <imageTag>
 set -euo pipefail
-TENANT="${1:?tenantId}"; TAG="${2:?imageTag}"; API_URL="${3:-https://api.planz-development.gameye.net}"
+TENANT="${1:?tenantId}"; TAG="${2:?imageTag}"
 : "${MM_URL:?}"; : "${PLATFORM_ADMIN_TOKEN:?}"; : "${GAMEYE_API_TOKEN:?}"
 
-BODY=$(python3 - "$TENANT" "$TAG" "$API_URL" "$GAMEYE_API_TOKEN" <<'PY'
+BODY=$(python3 - "$TENANT" "$TAG" "$GAMEYE_API_TOKEN" <<'PY'
 import json, sys
-tenant, tag, api_url, token = sys.argv[1:5]
+tenant, tag, token = sys.argv[1:4]
 print(json.dumps({
   "tenantId": tenant,
   "gameyeApiToken": token,
@@ -26,9 +26,9 @@ print(json.dumps({
       "ffa-4": {"teamsPerMatch": 4, "teamSize": 1, "minPlayersToStart": 2,
                  "fillDeadlineSec": 20, "countdownSec": 3, "backfill": "prefer"}
     },
-    # GAMEYE_* is a reserved prefix in serverEnv; the server also reads TT_* aliases
-    # so it can keep reporting player counts to the Gameye session API.
-    "serverEnv": {"TT_GAMEYE_API_TOKEN": token, "TT_GAMEYE_API_URL": api_url}
+    # No Gameye credential in serverEnv: the matchmaker forwards player joins
+    # and leaves to Gameye with the tenant's token.
+    "serverEnv": {}
   }
 }))
 PY

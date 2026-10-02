@@ -49,14 +49,16 @@ const MIME = {
 
 const game = new Game();
 const clients = new Map(); // ws -> { playerId, alive, gameyePlayerId, mmPlayerId }
-// The matchmaker's reserved env prefixes block GAMEYE_* in tenant serverEnv, so
-// accept TT_-prefixed aliases for the player-count reporter as well.
+const matchmaker = createMatchmakerClient({ log });
+// Matchmade servers report joins and leaves to the matchmaker, which forwards
+// them to Gameye with the studio's token, so they never hold a Gameye
+// credential. Direct reporting is only for servers launched outside the
+// matchmaker with GAMEYE_API_TOKEN in the session env.
 const gameye = createGameyeReporter({
   log,
-  token: process.env.GAMEYE_API_TOKEN || process.env.TT_GAMEYE_API_TOKEN,
-  apiUrl: process.env.GAMEYE_API_URL || process.env.TT_GAMEYE_API_URL || undefined,
+  token: matchmaker.enabled ? undefined : process.env.GAMEYE_API_TOKEN,
+  apiUrl: process.env.GAMEYE_API_URL || undefined,
 });
-const matchmaker = createMatchmakerClient({ log });
 let roundEndTimer = null;
 const startedAt = Date.now();
 
@@ -307,7 +309,7 @@ server.listen(PORT, HOST, () => {
     .map(([k, v]) => `${k}=${/TOKEN|SECRET|KEY|PASSWORD/i.test(k) ? '<redacted>' : v}`);
   // GAMEYE_* above; matchmaker vars are MM_* and hold a secret, so only note their presence.
   if (gameyeEnv.length) log(`gameye env: ${gameyeEnv.join(' ')}`);
-  log(`gameye player reporting: ${gameye.enabled ? `on (${gameye.apiUrl}, session ${gameye.sessionId})` : 'off (set GAMEYE_API_TOKEN)'}`);
+  log(`gameye player reporting: ${gameye.enabled ? `on (${gameye.apiUrl}, session ${gameye.sessionId})` : matchmaker.enabled ? 'via matchmaker' : 'off (set GAMEYE_API_TOKEN)'}`);
   log(`matchmaker lifecycle: ${matchmaker.enabled ? `managed (${matchmaker.url}, match ${matchmaker.matchId.slice(0, 12)}…)` : 'off (no MM_URL)'}`);
   if (matchmaker.enabled) matchmaker.start();
   const ip = process.env.GAMEYE_IP || process.env.GAMEYE_HOST;
