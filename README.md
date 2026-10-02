@@ -65,6 +65,11 @@ comes from the `GAMEYE_CONTAINER` variable Gameye injects. This keeps
 `playerCount` on `GET /session` live, which is what the `playerCount[lt]` backfill
 filter needs. Without a token the server runs normally and reports nothing.
 
+Matchmade servers (started by gameye-rooms, with `MM_URL` set) never report
+directly and ignore `GAMEYE_API_TOKEN`: they send joins and leaves to the
+matchmaker, which forwards them to Gameye with the studio's token. Don't put a
+Gameye token in the tenant's `serverEnv`.
+
 ## Host it on Gameye
 
 Gameye nodes run linux/amd64, so build for that platform when pushing from an
