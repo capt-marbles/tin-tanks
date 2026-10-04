@@ -22,7 +22,8 @@ MAX_PLAYERS = "4"
 MAX_SESSIONS = "2"      # cap on concurrently running matches this launcher will start
 SESSION_TTL = "2h"
 
-# The matchmaker is no longer a Worker on this account, so there is no service
-# binding: the launcher reaches it with a plain fetch to MM_URL. To roll back to
-# the Cloudflare deployment, restore MM_URL = "https://tin-tanks-rooms.gameye.workers.dev"
-# and the [[services]] binding (binding = "MM", service = "tin-tanks-rooms").
+# The matchmaker runs natively on OVH, so there is no service binding: the
+# launcher reaches it with a plain fetch to MM_URL. The Cloudflare matchmaker
+# Worker (tin-tanks-rooms) was deleted on 2026-10-04, so there is no client
+# rollback to it; roll back the OVH deployment itself instead (see
+# docs/ovh-native-runbook.md in gameye/rooms-matchmaker).
