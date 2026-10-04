@@ -10,7 +10,7 @@ account_id = "6fe01292662c1234adaf972a1a621d14"   # Gameye
 
 [vars]
 MODE = "matchmaker"
-MM_URL = "https://tin-tanks-rooms.gameye.workers.dev"
+MM_URL = "https://137-74-108-96.sslip.io"   # native gameye-rooms on OVH (public HTTPS)
 MM_TENANT = "tin-tanks"
 MM_PLAYLIST = "ffa-4"
 KILL_LIMIT = "10"
@@ -22,8 +22,7 @@ MAX_PLAYERS = "4"
 MAX_SESSIONS = "2"      # cap on concurrently running matches this launcher will start
 SESSION_TTL = "2h"
 
-# Worker-to-worker calls on the same account must go through a service binding
-# (a plain fetch to the other worker's workers.dev URL fails with error 1042).
-[[services]]
-binding = "MM"
-service = "tin-tanks-rooms"
+# The matchmaker is no longer a Worker on this account, so there is no service
+# binding: the launcher reaches it with a plain fetch to MM_URL. To roll back to
+# the Cloudflare deployment, restore MM_URL = "https://tin-tanks-rooms.gameye.workers.dev"
+# and the [[services]] binding (binding = "MM", service = "tin-tanks-rooms").
