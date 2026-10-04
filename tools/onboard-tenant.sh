@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Onboard (or re-onboard under a new id) the Tin Tanks tenant on a gameye-rooms worker.
-# Tenant config cannot be edited after creation, so a new image tag means a new tenant id.
+# Onboard the Tin Tanks tenant on the gameye-rooms matchmaker (native, on OVH).
+# To move an existing tenant to a new image tag, patch it in place instead:
+#   PATCH $MM_URL/v1/tenant/<tenantId>  {"imageVersion": "<tag>", "enableTag": true}
 #
 # Usage:
-#   MM_URL=https://tin-tanks-rooms.gameye.workers.dev PLATFORM_ADMIN_TOKEN=... GAMEYE_API_TOKEN=... \
+#   MM_URL=https://137-74-108-96.sslip.io PLATFORM_ADMIN_TOKEN=... GAMEYE_API_TOKEN=... \
 #   tools/onboard-tenant.sh <tenantId> <imageTag>
 set -euo pipefail
 TENANT="${1:?tenantId}"; TAG="${2:?imageTag}"
