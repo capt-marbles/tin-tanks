@@ -10,7 +10,7 @@ account_id = "6fe01292662c1234adaf972a1a621d14"   # Gameye
 
 [vars]
 MODE = "matchmaker"
-MM_URL = "https://137-74-108-96.sslip.io"   # native gameye-rooms on OVH (public HTTPS)
+MM_URL = "https://matchmaker-dev.gameye.net"   # native gameye-rooms on OVH (public HTTPS)
 MM_TENANT = "tin-tanks"
 MM_PLAYLIST = "ffa-4"
 KILL_LIMIT = "10"
