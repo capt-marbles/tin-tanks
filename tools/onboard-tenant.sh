@@ -4,7 +4,7 @@
 #   PATCH $MM_URL/v1/tenant/<tenantId>  {"imageVersion": "<tag>", "enableTag": true}
 #
 # Usage:
-#   MM_URL=https://137-74-108-96.sslip.io PLATFORM_ADMIN_TOKEN=... GAMEYE_API_TOKEN=... \
+#   MM_URL=https://matchmaker-dev.gameye.net PLATFORM_ADMIN_TOKEN=... GAMEYE_API_TOKEN=... \
 #   tools/onboard-tenant.sh <tenantId> <imageTag>
 set -euo pipefail
 TENANT="${1:?tenantId}"; TAG="${2:?imageTag}"
