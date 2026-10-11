@@ -26,3 +26,16 @@ export function joinUrl(session) {
 export function countRunning(sessions, image, tag) {
   return sessions.filter((s) => matches(s, { image, tag })).length;
 }
+
+/**
+ * Env for a session the launcher starts. The game server only needs to report
+ * player joins and leaves, so it gets GAMEYE_SERVER_TOKEN (session:write only),
+ * never the launcher's own token. Without one it runs and reports nothing.
+ */
+export function sessionEnv(env) {
+  if (!env.GAMEYE_SERVER_TOKEN) return {};
+  return { GAMEYE_API_TOKEN: env.GAMEYE_SERVER_TOKEN, GAMEYE_API_URL: env.GAMEYE_API_URL };
+}
+
+/** Escape text for an HTML page. */
+export const escapeHtml = (value) => String(value).replace(/[&<>"']/g, (c) => `&#${c.charCodeAt(0)};`);
