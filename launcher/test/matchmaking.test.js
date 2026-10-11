@@ -43,3 +43,15 @@ test('a pinned tag ignores sessions on other builds', () => {
   assert.equal(pickSession(s, { image: 'tin-tanks', maxPlayers: 4 }).id, 'old');
   assert.equal(countRunning(s, 'tin-tanks', 'sha-new'), 1);
 });
+
+test('sessions get the server token, never the launcher token', async () => {
+  const { sessionEnv } = await import('../src/matchmaking.js');
+  const env = { GAMEYE_API_TOKEN: 'launcher', GAMEYE_SERVER_TOKEN: 'server', GAMEYE_API_URL: 'https://api.example' };
+  assert.deepEqual(sessionEnv(env), { GAMEYE_API_TOKEN: 'server', GAMEYE_API_URL: 'https://api.example' });
+  assert.deepEqual(sessionEnv({ GAMEYE_API_TOKEN: 'launcher', GAMEYE_API_URL: 'https://api.example' }), {});
+});
+
+test('escapes HTML', async () => {
+  const { escapeHtml } = await import('../src/matchmaking.js');
+  assert.equal(escapeHtml(`<a href="x">&'`), '&#60;a href=&#34;x&#34;&#62;&#38;&#39;');
+});

@@ -2,19 +2,23 @@
 # finds a match with a free slot (or starts one) and sends the player to it.
 #
 #   npx wrangler deploy                       # from this directory
-#   npx wrangler secret put GAMEYE_API_TOKEN  # once per environment
+#   npx wrangler secret put GAMEYE_API_TOKEN     # scopes session:start, session:read
+#   npx wrangler secret put GAMEYE_SERVER_TOKEN  # scope session:write only; handed to game servers
 name = "tin-tanks-launcher"
 main = "src/index.js"
 compatibility_date = "2026-09-01"
 account_id = "6fe01292662c1234adaf972a1a621d14"   # Gameye
 
 [vars]
-MODE = "matchmaker"
+# Direct mode on sandbox: the launcher starts sessions itself. To go back to the
+# gameye-rooms matchmaker (pinned to planz-development), set MODE = "matchmaker"
+# and GAMEYE_API_URL to planz-development.
+MODE = "direct"
 MM_URL = "https://matchmaker-dev.gameye.net"   # native gameye-rooms on OVH (public HTTPS)
 MM_TENANT = "tin-tanks"
 MM_PLAYLIST = "ffa-4"
 KILL_LIMIT = "10"
-GAMEYE_API_URL = "https://api.planz-development.gameye.net"
+GAMEYE_API_URL = "https://api.sandbox-gameye.gameye.net"
 GAMEYE_IMAGE = "tin-tanks"
 GAMEYE_TAG = "sha-8fc1ef62e17e"   # image tag to start; must be registered on the application
 GAMEYE_LOCATION = "eu-central-1"
