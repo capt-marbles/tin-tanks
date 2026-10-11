@@ -11,6 +11,7 @@ on:
 permissions:
   contents: read
   packages: write
+  deployments: write
 jobs:
   push:
     runs-on: ubuntu-latest
@@ -21,6 +22,7 @@ jobs:
       - name: Login to GHCR
         run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
       - name: Build and push (linux/amd64, unique tag per build)
+        id: build
         run: |
           IMAGE=$(echo "$IMAGE" | tr '[:upper:]' '[:lower:]')
           TAG=sha-${GITHUB_SHA::12}
@@ -28,3 +30,15 @@ jobs:
           docker push "$IMAGE:$TAG"
           docker push "$IMAGE:latest"
           echo "pushed $IMAGE:$TAG" >> "$GITHUB_STEP_SUMMARY"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+      # Registers the tag, waits until sandbox has pulled it, and smoke-tests a session on it.
+      - name: Deploy to Gameye sandbox
+        uses: gameye/deploy-action@v0.2.0
+        with:
+          api-token: ${{ secrets.GAMEYE_API_TOKEN }}
+          application: tin-tanks
+          tag: ${{ steps.build.outputs.tag }}
+          region: eu-central-1
+          smoke-test: true
+          smoke-duration: 30s
+          github-deployment: gameye-sandbox
