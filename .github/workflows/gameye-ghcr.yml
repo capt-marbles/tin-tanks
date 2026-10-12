@@ -33,7 +33,7 @@ jobs:
           echo "tag=$TAG" >> "$GITHUB_OUTPUT"
       # Registers the tag, waits until sandbox has pulled it, and smoke-tests a session on it.
       - name: Deploy to Gameye sandbox
-        uses: gameye/deploy-action@v0.2.0
+        uses: gameye/deploy-action@v0
         with:
           api-token: ${{ secrets.GAMEYE_API_TOKEN }}
           application: tin-tanks
